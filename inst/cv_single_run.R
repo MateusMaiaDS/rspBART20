@@ -84,17 +84,17 @@ x_train <- selected_train %>% dplyr::select(dplyr::starts_with("x"))
 x_test <- selected_test %>% dplyr::select(dplyr::starts_with("x"))
 y_train <- selected_train$y
 y_test <- selected_test$y
-n_tree <- 5
-node_min_size <- 15
+n_tree <- 10
+node_min_size <- 25
 n_mcmc <- 5000
 n_burn <- 2500
 alpha <- 0.5
 beta <- 2
-df <- 3
+df <- 1
 sigquant <- 0.9
 kappa <- 2
-nIknots <- 5
-dif_order <- 1
+nIknots <- 10
+dif_order <- 2
 tau <- 1
 scale_bool <- TRUE
 stump <- FALSE
@@ -112,13 +112,15 @@ interaction_list <- NULL
 store_tree_fit <- FALSE
 mle_prior <- FALSE
 linero_sampler <- FALSE
-use_D_bool <- TRUE
+use_D_bool <- FALSE
 varimportance_bool <- TRUE
 seed_ <- 42
 scale_basis_function <- FALSE
 robust_prior <- FALSE
-eta <- 1e-6
-c_splines <- TRUE
+eta <- 1
+a_delta <- 0.5
+d_delta <- 0.5
+
 set.seed(seed_)
 
 print(paste0("N: ",n_," SD: ", sd_, " nIknots: ", nIknots,

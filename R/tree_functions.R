@@ -116,7 +116,7 @@ get_max_node <- function(tree){
 
 
 # A function to calculate the loglikelihood
-nodeLogLikeBigD <- function(curr_part_res,
+nodeLogLike <- function(curr_part_res,
                         j_,
                         index_node,
                         data){
@@ -151,10 +151,10 @@ nodeLogLikeBigD <- function(curr_part_res,
       }
   }
 
-  cov_aux <- diag(x = (data$tau^(-1)),nrow = n_leaf) + cov_aux
+  cov_aux <- diag(nrow = n_leaf) + cov_aux
 
   result <- mvnfast::dmvn(X = curr_part_res_leaf,mu = mean_aux,
-                          sigma = cov_aux ,log = TRUE)
+                          sigma = (data$tau^(-1))*cov_aux ,log = TRUE)
 
 
   # plot(1:55,result)
@@ -312,18 +312,18 @@ grow <- function(tree,
 
   node_index_var <- g_node$pred_vars
 
-  g_loglike <- nodeLogLikeBigD(curr_part_res = curr_part_res,
+  g_loglike <- nodeLogLike(curr_part_res = curr_part_res,
                            j_ = node_index_var,
                            index_node = g_node$train_index,
                            data = data)
 
 
-  left_loglike <-  nodeLogLikeBigD(curr_part_res = curr_part_res,
+  left_loglike <-  nodeLogLike(curr_part_res = curr_part_res,
                                j_ = node_index_var,
                                index_node = left_index,
                                data = data)
 
-  right_loglike <-  nodeLogLikeBigD(curr_part_res = curr_part_res,
+  right_loglike <-  nodeLogLike(curr_part_res = curr_part_res,
                                 j_ = node_index_var,
                                 index_node = right_index,
                                 data = data)
@@ -454,13 +454,13 @@ add_variable <- function(tree,
 
   new_node_index_var <- unique(sort(c(g_node$pred_vars,p_var)))
 
-  g_loglike <- nodeLogLikeBigD(curr_part_res = curr_part_res,
+  g_loglike <- nodeLogLike(curr_part_res = curr_part_res,
                                j_ = g_node$pred_vars,
                                index_node = g_node$train_index,
                                data = data)
 
 
-  new_g_loglike <-  nodeLogLikeBigD(curr_part_res = curr_part_res,
+  new_g_loglike <-  nodeLogLike(curr_part_res = curr_part_res,
                                        j_ = new_node_index_var,
                                        index_node = g_node$train_index,
                                        data = data)
@@ -522,18 +522,18 @@ prune <- function(tree,
 
   node_index_var <- p_node$pred_vars
 
-  p_loglike <- nodeLogLikeBigD(curr_part_res = curr_part_res,
+  p_loglike <- nodeLogLike(curr_part_res = curr_part_res,
                            index_node = p_node$train_index,
                            j_ = node_index_var,
                            data = data)
 
 
-  p_left_loglike <-  nodeLogLikeBigD(curr_part_res = curr_part_res,
+  p_left_loglike <-  nodeLogLike(curr_part_res = curr_part_res,
                                  index_node =  children_left_index,
                                  j_ = node_index_var,
                                  data = data)
 
-  p_right_loglike <-  nodeLogLikeBigD(curr_part_res = curr_part_res,
+  p_right_loglike <-  nodeLogLike(curr_part_res = curr_part_res,
                                   index_node = children_right_index,
                                   j_ = node_index_var,
                                   data = data)
@@ -610,13 +610,13 @@ remove_variable <- function(tree,
 
   new_node_index_var <- unique(sort(p_node$pred_vars[!(p_node$pred_vars %in% remove_var)]))
 
-  p_loglike <- nodeLogLikeBigD(curr_part_res = curr_part_res,
+  p_loglike <- nodeLogLike(curr_part_res = curr_part_res,
                                j_ = p_node$pred_vars,
                                index_node = p_node$train_index,
                                data = data)
 
 
-  new_p_loglike <-  nodeLogLikeBigD(curr_part_res = curr_part_res,
+  new_p_loglike <-  nodeLogLike(curr_part_res = curr_part_res,
                                     j_ = new_node_index_var,
                                     index_node = p_node$train_index,
                                     data = data)
@@ -741,13 +741,13 @@ change <- function(tree,
 
 
   # Calculating loglikelihood for the new changed nodes and the old ones
-  c_loglike_left <- nodeLogLikeBigD(curr_part_res = curr_part_res,
+  c_loglike_left <- nodeLogLike(curr_part_res = curr_part_res,
                                     index_node = tree[[c_node$left]]$train_index,
                                     j_ = node_index_var,
                                     data = data)
 
 
-  c_loglike_right <-  nodeLogLikeBigD(curr_part_res = curr_part_res,
+  c_loglike_right <-  nodeLogLike(curr_part_res = curr_part_res,
                                       index_node = tree[[c_node$right]]$train_index,
                                       j_ =  node_index_var,
                                       data = data)
@@ -763,12 +763,12 @@ change <- function(tree,
   new_right_ancestors[length(new_right_ancestors)] <- p_var
 
 
-  new_c_loglike_left <-  nodeLogLikeBigD(curr_part_res = curr_part_res,
+  new_c_loglike_left <-  nodeLogLike(curr_part_res = curr_part_res,
                                          index_node = left_index,
                                          j = node_index_var,
                                          data = data)
 
-  new_c_loglike_right <-  nodeLogLikeBigD(curr_part_res = curr_part_res,
+  new_c_loglike_right <-  nodeLogLike(curr_part_res = curr_part_res,
                                           index_node = right_index,
                                           j =  node_index_var,
                                           data = data)
@@ -932,13 +932,13 @@ change_stump <- function(tree,
 
 
   # Calculating loglikelihood for the new changed nodes and the old ones
-  c_loglike <- nodeLogLikeBigD(curr_part_res = curr_part_res,
+  c_loglike <- nodeLogLike(curr_part_res = curr_part_res,
                                index_node = c_node$train_index,
                                j_ = c_node$pred_vars,
                                data = data)
 
 
-  c_new_loglike <-  nodeLogLikeBigD(curr_part_res = curr_part_res,
+  c_new_loglike <-  nodeLogLike(curr_part_res = curr_part_res,
                                     index_node = c_node$train_index,
                                     j_ =  new_node_index,
                                     data = data)
@@ -1069,13 +1069,13 @@ change_variable <- function(tree,
 
 
   # Calculating loglikelihood for the new changed nodes and the old ones
-  c_loglike <- nodeLogLikeBigD(curr_part_res = curr_part_res,
+  c_loglike <- nodeLogLike(curr_part_res = curr_part_res,
                                index_node = c_node$train_index,
                                j_ = c_node$pred_vars,
                                data = data)
 
 
-  c_new_loglike <-  nodeLogLikeBigD(curr_part_res = curr_part_res,
+  c_new_loglike <-  nodeLogLike(curr_part_res = curr_part_res,
                                     index_node = c_node$train_index,
                                     j_ =  new_node_index,
                                     data = data)
@@ -1167,17 +1167,17 @@ updateBetas <- function(tree,
 
 
       if(node_index_var[jj]<=length(data$dummy_x$continuousVars)){
-        U_ <- data$P[leaf_basis_subindex,leaf_basis_subindex,drop = FALSE]*data$tau_beta[node_index_var[jj]]
+        U_ <- data$P*data$tau_beta[node_index_var[jj]]
       } else {
         U_ <- data$P_interaction*data$tau_beta[node_index_var[jj]]
       }
 
-      Q_ <- (data$tau*crossprod(data$B_train[[node_index_var[jj]]]) + U_)
+      Q_ <- (crossprod(data$B_train[[node_index_var[jj]]]) + U_)
       Q_inv_ <- chol2inv(chol(Q_))
 
       # Storing the old betas
       # See that I also creating a vector with the new betas
-      new_betas <- mvnfast::rmvn(n = 1,mu = data$tau*Q_inv_%*%b_,sigma = Q_inv_)
+      new_betas <- mvnfast::rmvn(n = 1,mu = Q_inv_%*%b_,sigma = (data$tau^(-1))*Q_inv_)
       tree[[t_nodes_names[i]]]$betas_vec[leaf_basis_subindex] <- new_betas
       new_betas <- matrix(new_betas,nrow = 1)
       # Updating the residuals
@@ -1315,13 +1315,33 @@ updateBetasBigD <- function(tree,
 
 
 
+
+
+# =================
+# Update \tau_betas_gammas from the prior
+# =================
+update_delta <- function(data){
+
+
+  # Updating the robust delta
+  for(i in 1:length(data$robust_delta)){
+    # Pay attention here that (data$a_tau_beta_j is the same as 0.5*nu)
+    data$robust_delta[i] <- rgamma(n = 1,
+                                   shape = data$a_delta + 0.5*data$nu,
+                                   rate = data$d_delta + 0.5*data$nu*data$tau_beta[i])
+  }
+  # Returning hte rhe robust delta
+  return(data$robust_delta)
+}
+
 # =================
 # Update \tau_betas
 # =================
 update_tau_betas_j <- function(forest,
                                data){
 
-  # Setting some default hyperparameters
+
+  # This is the same regardless the approach
   a_tau_beta <- data$a_tau_beta_j
   d_tau_beta <- data$d_tau_beta_j
 
@@ -1358,19 +1378,18 @@ update_tau_betas_j <- function(forest,
 
       # Getting ht leaf basis
       for(kk in 1:length(var_)){
+
+
         leaf_basis_subindex <- unlist(data$basis_subindex[var_[kk]]) # Recall to the unique() function here
         p_ <- length(leaf_basis_subindex)
         betas_mat_ <- matrix(cu_t$betas_vec[leaf_basis_subindex],nrow = p_)
         tau_b_shape[var_[kk]] <- tau_b_shape[var_[kk]] + p_
-
-        if(var_[kk] <= NCOL(data$x_train)){ # This if is to decide which Penalty basis function is gonna to be used
+        if(var_[[kk]] <= length(data$dummy_x$continuousVars)){
           tau_b_rate[var_[kk]] <- tau_b_rate[var_[kk]] + c(crossprod(betas_mat_,crossprod(data$P,betas_mat_)))
         } else {
           tau_b_rate[var_[kk]] <- tau_b_rate[var_[kk]] + c(crossprod(betas_mat_,crossprod(data$P_interaction,betas_mat_)))
-
         }
       }
-      # }
 
     }
 
@@ -1379,281 +1398,57 @@ update_tau_betas_j <- function(forest,
 
   if(data$interaction_term){
 
-    if(data$linero_sampler){
-
-      # Use Linero sampler to solve this matter
+      # Getting the sample from tau_beta
       for(j in 1:(NCOL(data$x_train)+NCOL(data$interaction_list)) ){
 
+        # if( j== 8){
+        #   stop("")
+        # }
         if(length(d_tau_beta)>1){
-          tau_beta_vec_aux_proposal <- rgamma(n = 1,
-                                        shape = 0.5*tau_b_shape[j] + a_tau_beta,
-                                        rate = 0.5*tau_b_rate[j] + d_tau_beta[j])
-
-
-
-          # Getting the values from the proposal
-          acceptance_tau_beta_ <- exp(extraDistr::dhcauchy(x = tau_beta_vec_aux_proposal^(-1/2),sigma = data$tau_mu^(-1/2),log = TRUE)+(-3/2)*log(tau_beta_vec_aux_proposal) - extraDistr::dhcauchy(x = data$tau_beta[j]^(-1/2),sigma = data$tau_mu^(-1/2),log = TRUE)-(-3/2)*log(data$tau_beta[j]))
-
-          if(stats::runif(n = 1) < acceptance_tau_beta_){
-            tau_beta_vec_aux[j] <- tau_beta_vec_aux_proposal
-          } else {
-            tau_beta_vec_aux[j] <- data$tau_beta[j]
-          }
-
+          tau_beta_vec_aux_proposal <-rgamma(n = 1,
+                                             shape = 0.5*tau_b_shape[j] + 0.5*data$nu,
+                                             rate = 0.5*data$tau*tau_b_rate[j] + 0.5*data$nu*data$robust_delta[j])
         } else {
           tau_beta_vec_aux_proposal <- rgamma(n = 1,
-                                        shape = 0.5*tau_b_shape[j] + a_tau_beta,
-                                        rate = 0.5*tau_b_rate[j] + d_tau_beta)
+                                              shape = 0.5*tau_b_shape[j] + 0.5*data$nu,
+                                              rate = 0.5*data$tau*tau_b_rate[j] + 0.5*data$nu*data$robust_delta[j])
 
-          # Getting the values from the proposal
-          acceptance_tau_beta_ <- exp(extraDistr::dhcauchy(x = tau_beta_vec_aux_proposal^(-1/2),sigma = data$tau_mu^(-1/2),log = TRUE)+(-3/2)*log(tau_beta_vec_aux_proposal) - extraDistr::dhcauchy(x = data$tau_beta[j]^(-1/2),sigma = data$tau_mu^(-1/2),log = TRUE)-(-3/2)*log(data$tau_beta[j]))
-
-          if(stats::runif(n = 1) < acceptance_tau_beta_){
-            tau_beta_vec_aux[j] <- tau_beta_vec_aux_proposal
-          } else {
-            tau_beta_vec_aux[j] <- data$tau_beta[j]
-          }
-
+            # Just checking any error with tau_beta sampler
+            if(tau_beta_vec_aux_proposal > 20){
+              tau_beta_vec_aux_proposal <- 20
+              warning("Warning: modified value for tau_beta to avoid numerical issues")
+            }
         }
+
+        tau_beta_vec_aux[j] <- tau_beta_vec_aux_proposal
       }
 
 
-    } else { # This else is regarding "Linero sampler" (the chunk above wouldn't use it)
+    } else { # This else is if there is no interaction
 
-        for(j in 1:(NCOL(data$x_train)+NCOL(data$interaction_list)) ){
+      for(j in 1:(NCOL(data$x_train)) ){
 
-          if(length(d_tau_beta)>1){
-              # tau_beta_vec_aux[j] <- rgamma(n = 1,
-              #                               shape = 0.5*tau_b_shape[j] + a_tau_beta,
-              #                               rate = 0.5*tau_b_rate[j] + d_tau_beta[j])
-              tau_beta_vec_aux[j] <- rgamma(n = 1,
-                                            shape = 0.5*tau_b_shape[j] + a_tau_beta,
-                                            rate = 0.5*tau_b_rate[j] + d_tau_beta[j])
-          } else {
-            tau_beta_vec_aux[j] <- rgamma(n = 1,
-                                          shape = 0.5*tau_b_shape[j] + a_tau_beta,
-                                          rate = 0.5*tau_b_rate[j] + d_tau_beta)
-          }
-        }
-
-    }
-  } else {
-
-    # Adding the "Linero sampler option
-    if(data$linero_sampler){
-
-      for(j in 1:NCOL(data$x_train)){
-        tau_beta_vec_aux_proposal[j] <- rgamma(n = 1,
-                                               shape = 0.5*tau_b_shape[j] + a_tau_beta,
-                                               rate = 0.5*tau_b_rate[j] + d_tau_beta)
-
-        # Getting the values from the proposal
-        acceptance_tau_beta_ <- exp(extraDistr::dhcauchy(x = tau_beta_vec_aux_proposal^(-1/2),sigma = data$tau_mu^(-1/2),log = TRUE)+(-3/2)*log(tau_beta_vec_aux_proposal) - extraDistr::dhcauchy(x = data$tau_beta[j]^(-1/2),sigma = data$tau_mu^(-1/2), log = TRUE)-(-3/2)*log(data$tau_beta[j]))
-
-        if(stats::runif(n = 1) < acceptance_tau_beta_){
-          tau_beta_vec_aux[j] <- tau_beta_vec_aux_proposal
-        } else {
-          tau_beta_vec_aux[j] <- data$tau_beta[j]
-        }
-      }
-    } else {
-      tau_beta_vec_aux[j] <- rgamma(n = 1,
-                                    shape = 0.5*tau_b_shape[j] + a_tau_beta,
-                                    rate = 0.5*tau_b_rate[j] + d_tau_beta)
-    }
-
-  }
-
-  return(tau_beta_vec_aux)
-
-}
-
-
-# =================
-# Update \tau_betas_gammas from the prior
-# =================
-update_delta_tau_beta <- function(data){
-
-
-  # Updating the robust delta
-  for(i in 1:length(data$robust_delta)){
-    # Pay attention here that (data$a_tau_beta_j is the same as 0.5*nu)
-    data$robust_delta[i] <- rgamma(n = 1,
-                                   shape = data$a_delta_tau + data$a_tau_beta_j,
-                                   rate = data$d_delta_tau + data$a_tau_beta_j*data$tau_beta[i])
-  }
-  # Returning hte rhe robust delta
-  return(data$robust_delta)
-}
-
-# =================
-# Update \tau_betas
-# =================
-update_tau_betas_j_BigD <- function(forest,
-                               data){
-
-  # Setting some default hyperparameters ( have in mind that in this case)
-  if(data$robust_prior){
-    d_tau_beta <- 2*data$a_tau_beta_j*data$robust_delta # Here I using the updated valeus for gamma
-  } else {
-    d_tau_beta <- data$d_tau_beta_j # Here I using the approach that just use information from D
-  }
-
-  # This is the same regardless the approach
-  if(data$robust_prior){
-    a_tau_beta <- 2*data$a_tau_beta_j
-  } else {
-    a_tau_beta <- data$a_tau_beta_j
-  }
-
-  # a_tau_beta <- 20
-
-  # Following the PAPER OF Bayesian P-Splines
-  #(this has been incorporated into the 'main_function.R' file.)
-  # d_tau_beta <- 0.001
-
-  tau_b_shape <- 0.0
-  tau_b_rate <- 0.0
-
-
-  if(data$interaction_term){
-    tau_b_shape <- numeric(NCOL(data$x_train)+NCOL(data$interaction_list))
-    tau_b_rate <- numeric(NCOL(data$x_train)+NCOL(data$interaction_list))
-    tau_beta_vec_aux <- numeric(NCOL(data$x_train)+NCOL(data$interaction_list))
-  } else{
-    tau_b_shape <- numeric(NCOL(data$x_train))
-    tau_b_rate <- numeric(NCOL(data$x_train))
-    tau_beta_vec_aux_proposal <- tau_beta_vec_aux <- numeric(NCOL(data$x_train))
-  }
-
-  # Iterating over all trees
-  for(i in 1:length(forest)){
-
-    # Getting terminal nodes
-    t_nodes_names <- get_terminals(forest[[i]])
-    n_t_nodes <- length(t_nodes_names)
-
-    # Iterating over the terminal nodes
-    for(j in 1:length(t_nodes_names)){
-
-      cu_t <- forest[[i]][[t_nodes_names[j]]]
-
-
-      # All the information from var_ now is summarised inside the element from ht enode pred_vars
-      var_ <- cu_t$pred_vars
-
-
-      # Getting ht leaf basis
-      for(kk in 1:length(var_)){
-        leaf_basis_subindex <- unlist(data$basis_subindex[var_[kk]]) # Recall to the unique() function here
-        p_ <- length(leaf_basis_subindex)
-        betas_mat_ <- matrix(cu_t$betas_vec[leaf_basis_subindex],nrow = p_)
-        tau_b_shape[var_[kk]] <- tau_b_shape[var_[kk]] + p_
-        tau_b_rate[var_[kk]] <- tau_b_rate[var_[kk]] + c(crossprod(betas_mat_,crossprod(data$P[leaf_basis_subindex,leaf_basis_subindex],betas_mat_)))
-      }
-
-    }
-
-
-  }
-
-  if(data$interaction_term){
-
-    if(data$linero_sampler){
-
-      # Use Linero sampler to solve this matter
-      for(j in 1:(NCOL(data$x_train)+NCOL(data$interaction_list)) ){
 
         if(length(d_tau_beta)>1){
           tau_beta_vec_aux_proposal <-rgamma(n = 1,
-                                              shape = 0.5*tau_b_shape[j] + a_tau_beta,
-                                              rate = 0.5*tau_b_rate[j] + d_tau_beta[j])
-
-          # Getting the values from the proposal
-          acceptance_tau_beta_ <- exp(extraDistr::dhcauchy(x = tau_beta_vec_aux_proposal^(-1/2),sigma = data$tau_mu^(-1/2),log = TRUE)+(-3/2)*log(tau_beta_vec_aux_proposal) - extraDistr::dhcauchy(x = data$tau_beta[j]^(-1/2),sigma = data$tau_mu^(-1/2),log = TRUE)-(-3/2)*log(data$tau_beta[j]))
-
-          if(stats::runif(n = 1) < acceptance_tau_beta_){
-            tau_beta_vec_aux[j] <- tau_beta_vec_aux_proposal
-          } else {
-            tau_beta_vec_aux[j] <- data$tau_beta[j]
-          }
-
+                                             shape = 0.5*tau_b_shape[j] + 0.5*data$nu,
+                                             rate = 0.5*data$tau*tau_b_rate[j] + 0.5*data$nu*data$robust_delta[j])
         } else {
           tau_beta_vec_aux_proposal <- rgamma(n = 1,
-                                              shape = 0.5*tau_b_shape[j] + a_tau_beta,
-                                              rate = 0.5*tau_b_rate[j] + d_tau_beta)
-          if(is.infinite(tau_beta_vec_aux_proposal)){
-            stop("Error here")
+                                              shape = 0.5*tau_b_shape[j] + 0.5*data$nu,
+                                              rate = 0.5*data$tau*tau_b_rate[j] + 0.5*data$nu*data$robust_delta[j])
+
+          # Just checking any error with tau_beta sampler
+          if(tau_beta_vec_aux_proposal > 20){
+            tau_beta_vec_aux_proposal <- 20
+            warning("Warning: modified value for tau_beta to avoid numerical issues")
           }
-          # Getting the values from the proposal
-          acceptance_tau_beta_ <- exp(extraDistr::dhcauchy(x = tau_beta_vec_aux_proposal^(-1/2),sigma = data$tau_mu^(-1/2),log = TRUE)+(-3/2)*log(tau_beta_vec_aux_proposal) - extraDistr::dhcauchy(x = data$tau_beta[j]^(-1/2),sigma = data$tau_mu^(-1/2),log = TRUE)-(-3/2)*log(data$tau_beta[j]))
-
-          if(stats::runif(n = 1) < acceptance_tau_beta_){
-            tau_beta_vec_aux[j] <- tau_beta_vec_aux_proposal
-          } else {
-            tau_beta_vec_aux[j] <- data$tau_beta[j]
-          }
-
         }
+
+        tau_beta_vec_aux[j] <- tau_beta_vec_aux_proposal
       }
-
-
-    } else { # This else is regarding "Linero sampler" (the chunk above wouldn't use it)
-
-      for(j in 1:(NCOL(data$x_train)+NCOL(data$interaction_list)) ){
-
-        if(length(d_tau_beta)>1){
-          tau_beta_vec_aux[j] <- rgamma(n = 1,
-                                        shape = 0.5*tau_b_shape[j] + a_tau_beta,
-                                        rate = 0.5*tau_b_rate[j] + d_tau_beta[j])
-        } else {
-          tau_beta_vec_aux[j] <- rgamma(n = 1,
-                                        shape = 0.5*tau_b_shape[j] + a_tau_beta,
-                                        rate = 0.5*tau_b_rate[j] + d_tau_beta)
-          # Keefe's discussion
-          # a_tau_beta <- 1.5
-          # d_tau_beta <- 0.001
-          # rltrgamma(n = 10000,
-          #           shape = 0.5*tau_b_shape[j] + a_tau_beta,
-          #           rate = 0.5*tau_b_rate[j] + d_tau_beta,trunc = data$tau_mu) %>%
-          #   density() %>% plot(main = paste0("Density for the prior Basis: ", j ),xlab = '',
-          #                      sub = paste0("shape_post_tau_beta:", 0.5*tau_b_shape[j] + a_tau_beta,
-          #                                   " || rate_d_tau_beta:", round(0.5*tau_b_rate[j] + d_tau_beta,digits = 5)))
-          # Run a error
-          if(is.infinite(tau_beta_vec_aux[j])){
-            stop("Error here")
-          }
-
-        }
-      }
-
-    }
-  } else {
-
-    # Adding the "Linero sampler option
-    if(data$linero_sampler){
-
-      for(j in 1:NCOL(data$x_train)){
-        tau_beta_vec_aux_proposal <- rgamma(n = 1,
-                                               shape = 0.5*tau_b_shape[j] + a_tau_beta,
-                                               rate = 0.5*tau_b_rate[j] + d_tau_beta)
-
-        # Getting the values from the proposal
-        acceptance_tau_beta_ <- exp(extraDistr::dhcauchy(x = tau_beta_vec_aux_proposal^(-1/2),sigma = data$tau_mu^(-1/2),log = TRUE)+(-3/2)*log(tau_beta_vec_aux_proposal) - extraDistr::dhcauchy(x = data$tau_beta[j]^(-1/2),sigma = data$tau_mu^(-1/2), log = TRUE)-(-3/2)*log(data$tau_beta[j]))
-
-        if(stats::runif(n = 1) < acceptance_tau_beta_){
-          tau_beta_vec_aux[j] <- tau_beta_vec_aux_proposal
-        } else {
-          tau_beta_vec_aux[j] <- data$tau_beta[j]
-        }
-      }
-    } else {
-      tau_beta_vec_aux[j] <-rgamma(n = 1,
-                                    shape = 0.5*tau_b_shape[j] + a_tau_beta,
-                                    rate = 0.5*tau_b_rate[j] + d_tau_beta)
     }
 
-  }
 
   return(tau_beta_vec_aux)
 
@@ -1725,7 +1520,31 @@ update_tau <- function(y_train_hat,
 
   # Sampling a tau value
   n_ <- nrow(data$x_train)
-  tau_sample <- stats::rgamma(n = 1,shape = 0.5*n_+data$a_tau,rate = 0.5*crossprod((data$y_train-y_train_hat))+data$d_tau)
+  k_vec <- numeric(length = length(data$basis_subindex))
+  j_vec <- numeric(length = length(data$basis_subindex))
+
+  # Doing the parameter sum
+  for(tree in 1:length(forest)){
+    terminal_nodes_names <- get_terminals(forest[[tree]])
+    for(curr_node in terminal_nodes_names) {
+      pred_vars <- forest[[tree]][[curr_node]]$pred_vars
+
+      for(k in pred_vars){
+        k_vec[k] <- k_vec[k] + length(data$basis_subindex[[k]])
+        # Getting the current betas
+        current_betas <- forest[[tree]][[curr_node]]$betas_vec[data$basis_subindex[[k]]]
+        if(k <= length(data$dummy_x$continuousVars)){
+          j_vec[k] <- j_vec[k] + data$tau_beta[k]*current_betas%*%crossprod(data$P,current_betas)
+        } else {
+          j_vec[k] <- j_vec[k] + data$tau_beta[k]*current_betas%*%crossprod(data$P_interaction,current_betas)
+        }
+      }
+
+    }
+  }
+
+  tau_sample <- stats::rgamma(n = 1,shape = 0.5*n_ + 0.5*sum(k_vec) + data$a_tau,
+                              rate = 0.5*crossprod((data$y_train-y_train_hat))+ 0.5*sum(j_vec) + data$d_tau)
 
   return(tau_sample)
 
