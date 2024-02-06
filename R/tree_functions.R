@@ -1409,13 +1409,13 @@ update_tau_betas_j <- function(forest,
                                              shape = 0.5*tau_b_shape[j] + 0.5*data$nu,
                                              rate = 0.5*data$tau*tau_b_rate[j] + 0.5*data$nu*data$robust_delta[j])
         } else {
-          tau_beta_vec_aux_proposal <- rgamma(n = 1,
-                                              shape = 0.5*tau_b_shape[j] + 0.5*data$nu,
+          tau_beta_vec_aux_proposal <- rltrgamma(n = 1,
+                                              shape = 0.5*tau_b_shape[j] + 0.5*data$nu,trunc = 50,
                                               rate = 0.5*data$tau*tau_b_rate[j] + 0.5*data$nu*data$robust_delta[j])
 
             # Just checking any error with tau_beta sampler
-            if(tau_beta_vec_aux_proposal > 20){
-              tau_beta_vec_aux_proposal <- 20
+            if(tau_beta_vec_aux_proposal > 50){
+              tau_beta_vec_aux_proposal <- 50
               warning("Warning: modified value for tau_beta to avoid numerical issues")
             }
         }
@@ -1439,8 +1439,8 @@ update_tau_betas_j <- function(forest,
                                               rate = 0.5*data$tau*tau_b_rate[j] + 0.5*data$nu*data$robust_delta[j])
 
           # Just checking any error with tau_beta sampler
-          if(tau_beta_vec_aux_proposal > 20){
-            tau_beta_vec_aux_proposal <- 20
+          if(tau_beta_vec_aux_proposal > 50){
+            tau_beta_vec_aux_proposal <- 50
             warning("Warning: modified value for tau_beta to avoid numerical issues")
           }
         }
