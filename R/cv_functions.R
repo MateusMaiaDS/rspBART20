@@ -21,7 +21,7 @@ all_bart <- function(cv_element,
   # Running the model
   spBART <- rspBART(x_train = x_train,
                     x_test = x_test,y_train = y_train,
-                    n_mcmc = 2500,node_min_size = 15,alpha = alpha_,
+                    n_mcmc = 2500,node_min_size = 25,alpha = alpha_,
                     n_burn = 0,nIknots = nIknots_,n_tree = ntree_,
                     use_bs = use_bs_,scale_bool = TRUE,plot_preview = FALSE,
                     motrbart_bool = motr_bart_)
@@ -473,18 +473,20 @@ all_bart_lite_interaction <- function(cv_element,
 
   spBART_interaction <- rspBART(x_train = x_train,
                     x_test = x_test,y_train = y_train,
-                    n_mcmc = n_mcmc_,node_min_size = 15,alpha = alpha_,
+                    n_mcmc = n_mcmc_,node_min_size = 25,alpha = alpha_,
                     n_burn = 0,nIknots = nIknots_,n_tree = ntree_,
                     use_bs = use_bs_,all_var = rsp_bart_all_,
                     stump = FALSE,dif_order = dif_order_,scale_bool = y_scale_,
                     motrbart_bool = motr_bart_,
                     scale_init = scale_init_,
                     interaction_term = interaction_term_,main_effects_pred = FALSE,
-                    update_tau_beta = update_tau_beta_,mle_prior = mle_prior_)
+                    update_tau_beta = update_tau_beta_,mle_prior = mle_prior_,linero_sampler = FALSE,
+                    use_D_bool = FALSE,scale_basis_function = FALSE,store_tree_fit = FALSE,varimportance_bool = TRUE,
+                    robust_prior = FALSE)
 
 
-  # n_burn_ <- 500
-  # n_mcmc_ <- spBART_interaction$mcmc$n_mcmc
+  n_burn_ <- n_burn_
+  n_mcmc_ <- spBART_interaction$mcmc$n_mcmc
 
   # Calculating metrics for splinesBART
   comparison_metrics <- rbind(comparison_metrics,data.frame(metric = "rmse_train",

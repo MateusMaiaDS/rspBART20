@@ -44,9 +44,10 @@ rspBART <- function(x_train,
                     varimportance_bool = FALSE,
                     scale_basis_function = TRUE,
                     robust_prior = FALSE,
-                    eta = 1.0,
+                    eta = 1e-6,
                     a_delta = 0.5,
-                    d_delta = 0.5
+                    d_delta = 0.5,
+                    pen_basis = TRUE
 ) {
 
 
@@ -160,7 +161,8 @@ rspBART <- function(x_train,
   # Creating the knots based on the DALSM package
   new_knots <- list()
   for(i in 1:length(dummy_x$continuousVars)){
-    new_knots[[i]] <- DALSM::qknots(x = x_train_scale,equid.knots = TRUE,pen.order = 2,K = nIknots)
+    new_knots[[i]] <- DALSM::qknots(x = x_train_scale[,i],equid.knots = TRUE,
+                                    pen.order = dif_order,K = nIknots)
   }
   # Setting the names of the basis
   names(new_knots) <- paste0("x.",1:length(dummy_x$continuousVars))
@@ -193,27 +195,6 @@ rspBART <- function(x_train,
 
 
 
-
-  # Checking all possible interactions
-  basis_size <-  length(new_knots[[1]]$knots)+1     # Change this value to the desired size of each sublist
-
-
-  # Setting the indexes for the betas
-  D_seq <- 1:(basis_size*length(dummy_x$continuousVars))  # Replace this with the columns of D
-
-  # Creating a vector
-  basis_subindex_main <- split(D_seq, rep(1:((length(D_seq) %/% basis_size)), each = basis_size, length.out = length(D_seq)))
-
-
-  D_int_seq <- (length(D_seq)+1):(basis_size*length(dummy_x$continuousVars)+(basis_size^2)*interaction_size)
-  interactions_subindex <- split(D_int_seq, rep(1:((length(D_int_seq) %/% basis_size)), each = basis_size^2, length.out = length(D_int_seq)))
-
-  # Getting the final basis subindex
-  if(interaction_term){
-      basis_subindex <- append(basis_subindex_main,interactions_subindex)
-  } else {
-      basis_subindex <- basis_subindex_main
-  }
 
 
   # Creating the natural B-spline for each predictor
@@ -277,6 +258,20 @@ rspBART <- function(x_train,
     }
   }
 
+  # Visualzing the main effects
+  if(plot_preview){
+    par(mfrow = c(2,5))
+    # Visualizing some basis functions
+    for(visu_basis in 1:10){
+      plot(x  = 0, xlim = c(0,1), ylim = c(-1,1),
+           type= 'n', ylab= paste0("B.",visu_basis), main = paste0("B(",visu_basis,")"))
+      for(basis_col in 1:NCOL(B_train_obj[[visu_basis]])){
+        points(x_train[,visu_basis], B_train_obj[[visu_basis]][,basis_col],
+               col = basis_col, pch = 20, xlab = paste0("x.",visu_basis))
+      }
+    }
+  }
+
   # Renaming the columns of inthe basis subindex
   main_effects_names <- paste0(1:length(dummy_x$continuousVars))
 
@@ -292,13 +287,7 @@ rspBART <- function(x_train,
   }
 
 
-  # Renaming only the interactions
-  if(interaction_term){
-    names(basis_subindex)[(length(dummy_x$continuousVars)+1):length(basis_subindex)] <- concatenate_columns(interaction_list)
-    names(B_train_obj) <- names(B_test_obj) <- c(main_effects_names,interaction_names)
-  } else {
-    names(B_train_obj) <- names(B_test_obj) <- main_effects_names
-  }
+
 
   # And the main effects
   if(motrbart_bool){
@@ -356,7 +345,7 @@ rspBART <- function(x_train,
 
 
   # Simplying a_tau and d_tau priors
-  a_tau <- d_tau <- 1e-6
+  # a_tau <- d_tau <- 1e-6
 
   # Call the bart function
   tau_init <- nsigma^(-2)
@@ -394,7 +383,7 @@ rspBART <- function(x_train,
   }
   # all_delta <- numeric(n_mcmc)
   all_tau <- numeric(n_mcmc)
-  all_delta <- matrix(NA, nrow = n_mcmc, ncol = length(basis_subindex))
+  all_delta <- matrix(NA, nrow = n_mcmc, ncol = NCOL(x_train_scale)+NCOL(interaction_list))
 
   all_y_hat <- matrix(NA,nrow = n_mcmc,ncol = nrow(x_train_scale))
   all_y_hat_test <- matrix(NA, nrow = n_mcmc, ncol = nrow(x_test_scale))
@@ -492,25 +481,12 @@ rspBART <- function(x_train,
   if(dif_order==0){
     P_train_main <- diag(nrow = K)
   } else {
-    P_train_main <- centered_basis_aux$Pd
-
-    # Adding small numerical value for stability issues
-    if(dif_order==1){
-      P_train_main[1,1] <- P_train_main[1,1] + eta
-    } else if(dif_order == 2) {
-      P_train_main[1,1] <- P_train_main[1,1] + eta
-      P_train_main[K,K] <- P_train_main[K,K] + eta
-    } else if(dif_order == 3){
-      P_train_main[1,1] <- P_train_main[1,1] + eta
-      P_train_main[2,2] <- P_train_main[2,2] + eta
-      P_train_main[K,K] <- P_train_main[K,K] + eta
-    } else {
-      stop("Dif. order is greater than 3, choose a lower one.")
-    }
+    P_train_main <- as.matrix(Matrix::nearPD(centered_basis_aux$Pd)$mat)
   }
 
   # Generating the interaction matrix
   P_train_interaction <- kronecker(P_train_main,P_train_main)
+
 
   # Tau_beta_priors
   # Getting hyperparameters for \tau_beta_j
@@ -534,9 +510,67 @@ rspBART <- function(x_train,
   d_tau_beta_j <- 10
 
   # Getting the inverse of the P matrix
-  P_inv <- MASS::ginv(P_train_main)
-  P_inv_interaction <- MASS::ginv(P_train_interaction)
+  P_inv <- chol2inv(chol(P_train_main))
+  # P_inv_two <- chol2inv(chol(P_train_main_two))
+  P_inv_interaction <- chol2inv(chol(P_train_interaction))
 
+
+  # For the case of penalised basis I transform back the P into a diagonal matrix
+  if(pen_basis){
+
+    # Getting the D matrix
+    D <- centered_basis_aux$Dd
+    Diff_term <- crossprod(D,solve(tcrossprod(D)))
+    for(main_iter in 1:length(dummy_x$continuousVars)){
+        B_train_obj[[main_iter]] <- B_train_obj[[main_iter]]%*%Diff_term
+        B_test_obj[[main_iter]] <- B_test_obj[[main_iter]]%*%Diff_term
+    }
+
+    P_train_main <- P_inv <- diag(nrow = NCOL(B_train_obj[[1]]))
+    P_train_interaction <- P_inv_interaction <- diag(nrow = NCOL(B_train_obj[[1]])^2)
+
+    # Adding the interaction basis
+    if(interaction_term){
+      jj_ = length(dummy_x$continuousVars)
+      for (jj in 1:NCOL(interaction_list)) {
+        jj_ = jj_ +1
+        B_train_obj[[jj_]] <- multiply_matrices_general(A = B_train_obj[[interaction_list[1,jj]]],B = B_train_obj[[interaction_list[2,jj]]])
+        B_test_obj[[jj_]] <- multiply_matrices_general(A = B_test_obj[[interaction_list[1,jj]]],B = B_test_obj[[interaction_list[2,jj]]])
+      }
+    }
+
+  }
+
+
+  # ======== Defining index for each coefficient ============== #
+
+  # Checking all possible interactions
+  basis_size <-  NCOL(B_train_obj[[1]])     # Change this value to the desired size of each sublist
+
+  # Setting the indexes for the betas
+  D_seq <- 1:(basis_size*length(dummy_x$continuousVars))  # Replace this with the columns of D
+
+  # Creating a vector
+  basis_subindex_main <- split(D_seq, rep(1:((length(D_seq) %/% basis_size)), each = basis_size, length.out = length(D_seq)))
+
+
+  D_int_seq <- (length(D_seq)+1):(basis_size*length(dummy_x$continuousVars)+(basis_size^2)*interaction_size)
+  interactions_subindex <- split(D_int_seq, rep(1:((length(D_int_seq) %/% basis_size)), each = basis_size^2, length.out = length(D_int_seq)))
+
+  # Getting the final basis subindex
+  if(interaction_term){
+    basis_subindex <- append(basis_subindex_main,interactions_subindex)
+  } else {
+    basis_subindex <- basis_subindex_main
+  }
+
+  # Renaming only the interactions
+  if(interaction_term){
+    names(basis_subindex)[(length(dummy_x$continuousVars)+1):length(basis_subindex)] <- concatenate_columns(interaction_list)
+    names(B_train_obj) <- names(B_test_obj) <- c(main_effects_names,interaction_names)
+  } else {
+    names(B_train_obj) <- names(B_test_obj) <- main_effects_names
+  }
 
   # Geneating initial values for delta
   robust_delta <- rep(3, length(basis_subindex))
@@ -601,11 +635,11 @@ rspBART <- function(x_train,
   if(plot_preview){
     par(mfrow = c(2,5))
     # Visualizing some basis functions
-    for(visu_basis in 1:11){
-      plot(x  = 0, xlim = c(0,1), ylim = c(-0.5,0.5),
+    for(visu_basis in 1:10){
+      plot(x  = 0, xlim = c(0,1), ylim = c(-1,1),
            type= 'n', ylab= paste0("B.",visu_basis), main = paste0("B(",visu_basis,")"))
-      for(basis_col in 1:NCOL(data$B_train[[visu_basis]])){
-        points(data$x_train[,visu_basis], data$B_train[[visu_basis]][,basis_col],
+      for(basis_col in 1:NCOL(B_train_obj[[visu_basis]])){
+        points(x_train[,visu_basis], B_train_obj[[visu_basis]][,basis_col],
                col = basis_col, pch = 20, xlab = paste0("x.",visu_basis))
       }
     }
@@ -699,6 +733,7 @@ rspBART <- function(x_train,
                               data = data)
 
       } else if (verb == "add_variable"){
+
           forest[[t]] <- add_variable(tree = forest[[t]],
                                       curr_part_res = partial_residuals,
                                       data = data)
@@ -812,7 +847,7 @@ rspBART <- function(x_train,
 
     # Getting tau
     data$tau <- update_tau(y_train_hat = y_hat,
-                           data = data)
+                           data = data, forest = forest)
 
 
     # Storing all predictions and (TREES depending on the boolean)
@@ -902,14 +937,14 @@ rspBART <- function(x_train,
       # Main effect range difference
       range_basis_j_predictions <- numeric(length = length(main_effects_train_list_norm))
       range_tree_bais_j_predictions <- matrix(NA, ncol = n_tree, nrow = length(main_effects_train_list_norm))
-      n_burn_plot <- 0
+      n_burn_plot <- 500
 
       par(mfrow = c(2,floor(NCOL(data$x_train)/2)))
       for(jj in 1:12){
 
         if(jj <= NCOL(data$x_train)){
             plot(x_train[,jj],colMeans(main_effects_train_list_norm[[jj]][n_burn_plot:i,, drop = FALSE]),main = paste0('X',jj),
-                 ylab = paste0('G(X',jj,')'), ylim = c(-4,4) ,pch=20,xlab = paste0('x.',jj), col = ggplot2::alpha("black",1.0))
+                 ylab = paste0('G(X',jj,')'), ylim = c(-10,10) ,pch=20,xlab = paste0('x.',jj), col = ggplot2::alpha("black",1.0))
         }    else if(jj == 11 ) {
             # plot(x_train[,1], colMeans(main_effects_train_list_norm[[jj]][1:i,,drop = FALSE]), ylab = "G(x.1,x2)", xlab = "X.1")
             # plot(x_train[,2], colMeans(main_effects_train_list_norm[[jj]][1:i,,drop = FALSE]), ylab = "G(x.1,x2)", xlab = "X.1")
@@ -986,7 +1021,7 @@ rspBART <- function(x_train,
   # Plotting vaiable importance
   if(plot_preview){
     par(mfrow=c(1,2))
-    burn_sample_ <- 50
+    burn_sample_ <- 500
     plot(1:NCOL(variable_importance_matrix),variable_importance_matrix[burn_sample_:i,,drop = FALSE] %>% colMeans(),
          ylab = "Prop. pred_var", xlab = "Predictor", main = c("Proportion Tree pred.vars"))
     points((1:NCOL(variable_importance_matrix))[c(1:5,11)],variable_importance_matrix[burn_sample_:i,c(1:5,11),drop = FALSE] %>% colMeans(),
@@ -1097,10 +1132,11 @@ rspBART <- function(x_train,
                            tau_mu = tau_mu,
                            a_tau = a_tau,
                            d_tau = d_tau,
-                           nsigma_beta = nsigma_beta,
-                           ntau_beta = ntau_beta,
                            a_tau_beta = a_tau_beta_j,
                            d_tau_beta = d_tau_beta_j,
+                           a_delta = a_delta,
+                           d_delta = d_delta,
+                           nu = df,
                            eta = eta),
               mcmc = list(n_mcmc = n_mcmc,
                           n_burn = n_burn,

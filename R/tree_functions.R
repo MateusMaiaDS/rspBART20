@@ -145,16 +145,32 @@ nodeLogLike <- function(curr_part_res,
   for(jj in 1:length(j_)){
       # Adding the quantities with respect to the interaction
       if(j_[jj] <= length(data$dummy_x$continuousVars)){
-        cov_aux <- cov_aux + (data$tau_beta[j_[jj]]^(-1))*data$B_train[[j_[jj]]][index_node,,drop = FALSE]%*%data$P_inv%*%t(data$B_train[[j_[jj]]][index_node,,drop = FALSE])
+        cov_aux <- cov_aux + (data$tau_beta[j_[jj]]^(-1))*data$B_train[[j_[jj]]][index_node,,drop = FALSE]%*%tcrossprod(data$P_inv,(data$B_train[[j_[jj]]][index_node,,drop = FALSE]))
       } else {
-        cov_aux <- cov_aux + (data$tau_beta[j_[jj]]^(-1))*data$B_train[[j_[jj]]][index_node,,drop = FALSE]%*%data$P_inv_interaction%*%t(data$B_train[[j_[jj]]][index_node,,drop = FALSE])
+        cov_aux <- cov_aux + (data$tau_beta[j_[jj]]^(-1))*data$B_train[[j_[jj]]][index_node,,drop = FALSE]%*%tcrossprod(data$P_inv_interaction,(data$B_train[[j_[jj]]][index_node,,drop = FALSE]))
       }
   }
 
-  cov_aux <- diag(nrow = n_leaf) + cov_aux
+  # Adding the main diagonal
+  cov_aux <- (diag(nrow = n_leaf) + cov_aux)/data$tau
+
+  # Defining Keefe suggestion
+  pivot_chol <- function(x) {
+    x <- chol(x, pivot=TRUE)
+    r <- attr(x, "rank")
+    p <- order(attr(x, "pivot"))
+    x[-seq_len(r),-seq_len(r)] <- 0
+    x <- x[,p]
+    x
+  }
+
+
+  chol_cov_aux <- tryCatch(chol(cov_aux), error=function(e) pivot_chol(cov_aux))
 
   result <- mvnfast::dmvn(X = curr_part_res_leaf,mu = mean_aux,
-                          sigma = (data$tau^(-1))*cov_aux ,log = TRUE)
+                          sigma = chol_cov_aux, log = TRUE, isChol=TRUE)
+  # result <- mvnfast::dmvn(X = curr_part_res_leaf,mu = mean_aux,
+  #                         sigma = (data$tau^(-1))*cov_aux ,log = TRUE)
 
 
   # plot(1:55,result)
@@ -1409,13 +1425,13 @@ update_tau_betas_j <- function(forest,
                                              shape = 0.5*tau_b_shape[j] + 0.5*data$nu,
                                              rate = 0.5*data$tau*tau_b_rate[j] + 0.5*data$nu*data$robust_delta[j])
         } else {
-          tau_beta_vec_aux_proposal <- rltrgamma(n = 1,
-                                              shape = 0.5*tau_b_shape[j] + 0.5*data$nu,trunc = 50,
+          tau_beta_vec_aux_proposal <- rgamma(n = 1,
+                                              shape = 0.5*tau_b_shape[j] + 0.5*data$nu,
                                               rate = 0.5*data$tau*tau_b_rate[j] + 0.5*data$nu*data$robust_delta[j])
 
             # Just checking any error with tau_beta sampler
-            if(tau_beta_vec_aux_proposal > 50){
-              tau_beta_vec_aux_proposal <- 50
+            if(tau_beta_vec_aux_proposal > 100){
+              tau_beta_vec_aux_proposal <- 100
               warning("Warning: modified value for tau_beta to avoid numerical issues")
             }
         }
@@ -1439,8 +1455,8 @@ update_tau_betas_j <- function(forest,
                                               rate = 0.5*data$tau*tau_b_rate[j] + 0.5*data$nu*data$robust_delta[j])
 
           # Just checking any error with tau_beta sampler
-          if(tau_beta_vec_aux_proposal > 50){
-            tau_beta_vec_aux_proposal <- 50
+          if(tau_beta_vec_aux_proposal > 100){
+            tau_beta_vec_aux_proposal <- 100
             warning("Warning: modified value for tau_beta to avoid numerical issues")
           }
         }
@@ -1516,7 +1532,8 @@ getPredictions <- function(tree,
 
 # Updating tau
 update_tau <- function(y_train_hat,
-                       data){
+                       data,
+                       forest){
 
   # Sampling a tau value
   n_ <- nrow(data$x_train)

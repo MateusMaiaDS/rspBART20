@@ -24,7 +24,7 @@ for(jj in 1:11){
 
   if(jj <= NCOL(x_train)){
     plot(x_train[,jj],colMeans(main_effects_train_list_norm[[jj]][n_burn_plot:n_mcmc,, drop = FALSE]),main = paste0('X',jj),
-         ylab = paste0('G(X',jj,')'),pch=20,xlab = paste0('x.',jj), col = alpha("black",1.0))
+         ylab = paste0('G(X',jj,')'),pch=20,ylim = c(-10,10),xlab = paste0('x.',jj), col = alpha("black",1.0))
   }    else if(jj == 11 ) {
     # plot(x_train[,1], colMeans(main_effects_train_list_norm[[jj]][1:i,,drop = FALSE]), ylab = "G(x.1,x2)", xlab = "X.1")
     # plot(x_train[,2], colMeans(main_effects_train_list_norm[[jj]][1:i,,drop = FALSE]), ylab = "G(x.1,x2)", xlab = "X.1")
@@ -72,9 +72,9 @@ points((1:NCOL(variable_importance_matrix))[c(1:5,11)],variable_importance_matri
 
 
 plot(1:NCOL(variable_importance_matrix),all_tau_beta[burn_sample_:n_mcmc,,drop = FALSE] %>% colMeans(na.rm = TRUE),
-     ylab = expression(bar(tau[beta])), xlab = "Predictor", main = c("Tau_beta_posterior_mean"))
+     ylab = expression(bar(lambda[j])), xlab = "Predictor", main = c("Lambda_posterior_mean"))
 points((1:NCOL(variable_importance_matrix))[c(1:5,11)],all_tau_beta[burn_sample_:n_mcmc,c(1:5,11),drop = FALSE] %>% colMeans(na.rm = TRUE),
-       ylab = "mean_tau_beta", xlab = "Predictor/Basis", pch = 20)
+       ylab = "mean_lambda_j", xlab = "Predictor/Basis", pch = 20)
 
 par(mfrow = c(1,1))
 
@@ -89,5 +89,5 @@ all_tau_beta[burn_sample_:n_mcmc,,drop = FALSE] %>% apply(2,sd) %>% plot
 points((1:NCOL(variable_importance_matrix))[c(1:5,11)],apply(all_tau_beta[burn_sample_:n_mcmc,c(1:5,11),drop = FALSE],2,sd),
        ylab = "mean_tau_beta", xlab = "Predictor/Basis", pch = 20)
 
-boxplot(all_tau_beta[4001:n_mcmc,,drop = FALSE])
+boxplot(all_tau_beta[4001:n_mcmc,,drop = FALSE], ylab = expression(lambda[j]), main = expression(lambda[j]))
 

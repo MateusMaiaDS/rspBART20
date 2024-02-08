@@ -253,16 +253,17 @@ normalize_main_effects <- function(vec_){
 
 # Formula for the model with only main effects
 smooth.main.formula <- function(x_){
-  y.1 <- sin(2*pi*x_[,1])
-  y.2 <- 2*(x_[,2])^3
-  y.3 <- exp(-2*x_[,3])
-  y.4 <- cos(x_[,4])
+  y.1 <- sin(2*pi*x_[,1])*10
+  y.2 <- (2*(x_[,2])^3)*10
+  y.3 <- (exp(-2*x_[,3]))*10
+  y.4 <- (cos(x_[,4]))*10
 
   # Generating the main effect matrix
   main.effects <- cbind(y.1,y.2,y.3,y.4)
   colnames(main.effects) <- paste0("y.",1:4)
 
-  main.effects.norm <- apply(main.effects,2,normalize_main_effects)
+  # main.effects.norm <- apply(main.effects,2,normalize_main_effects)
+  main.effects.norm <- main.effects
 
   return(main.effects.norm)
 }
@@ -276,14 +277,15 @@ non.smooth.main.formula <- function(x_){
 
   y.3 <- rep(7,nrow(x_))
   y.3[x_[,3]<0] <- -3
-  y.4 <- -1*x_[,4]
+  y.4 <- -5*x_[,4]
 
   # Generating the main effect matrix
   main.effects <- cbind(y.1,y.2,y.3,y.4)
   colnames(main.effects) <- paste0("y.",1:4)
 
 
-  main.effects.norm <- apply(main.effects,2,normalize_main_effects)
+  # main.effects.norm <- apply(main.effects,2,normalize_main_effects)
+  main.effects.norm <- main.effects
 
   return(main.effects.norm)
 }
@@ -305,7 +307,8 @@ non.and.smooth.main.formula <- function(x_){
   colnames(main.effects) <- paste0("y.",1:4)
 
 
-  main.effects.norm <- apply(main.effects,2,normalize_main_effects)
+  # main.effects.norm <- apply(main.effects,2,normalize_main_effects)
+  main.effects.norm <- main.effects
 
   return(main.effects.norm)
 }
@@ -378,10 +381,9 @@ plot.non.and.smooth.main <- function(x_){
 
 # Testing generating
 # set.seed(42)
-# sim_data <- sim.gen(n_ = 100,sd_ = 42,p_ = 10,formula_ = smooth.main.formula)
-# sim_data2 <- sim.gen(n_ = 100,sd_ = 42,p_ = 10,formula_ = non.smooth.main.formula)
+sim_data <- sim.gen(n_ = 100,sd_ = 42,p_ = 10,formula_ = non.smooth.main.formula)
 #
-# plot.non.and.smooth.main(x_ = sim_data$x)
+plot.non.smooth.main(x_ = sim_data$x)
 
 
 
