@@ -162,7 +162,7 @@ rspBART <- function(x_train,
   new_knots <- list()
   for(i in 1:length(dummy_x$continuousVars)){
     new_knots[[i]] <- DALSM::qknots(x = x_train_scale[,i],equid.knots = TRUE,
-                                    pen.order = dif_order,K = nIknots)
+                                    pen.order = 1,K = nIknots)
   }
   # Setting the names of the basis
   names(new_knots) <- paste0("x.",1:length(dummy_x$continuousVars))
@@ -194,8 +194,8 @@ rspBART <- function(x_train,
   }
 
 
-
-
+  # Getting basis without interactions
+  B_train_original <- B_test_original <- list()
 
   # Creating the natural B-spline for each predictor
   for(i in 1:length(dummy_x$continuousVars)){
@@ -205,9 +205,19 @@ rspBART <- function(x_train,
     centered_basis_aux <- DALSM::centeredBasis.gen(x = x_train_scale[,dummy_x$continuousVars[i]],
                                                    knots = new_knots[[i]]$knots,
                                                    pen.order = dif_order)
+
+    non_centered_basis_aux <- splines::spline.des(x = x_train_scale[,dummy_x$continuousVars[i], drop = FALSE],
+                                                             knots = new_knots[[i]]$knots,
+                                                             ord = ord_,
+                                                             derivs = 0*x_train_scale[,dummy_x$continuousVars[i], drop = FALSE],outer.ok = TRUE)$design
+
+
     K <- centered_basis_aux$K
 
     B_train_obj[[i]] <- centered_basis_aux$B
+
+    # Storing the noncentered basis
+    B_train_original[[i]] <- non_centered_basis_aux
 
     # Doing the same for the test samples
     centered_basis_aux_test <-DALSM::centeredBasis.gen(x = x_test_scale[,dummy_x$continuousVars[i], drop = FALSE],
@@ -336,12 +346,13 @@ rspBART <- function(x_train,
   nsigma <- naive_sigma(x = x_train_scale,y = y_scale)
 
   # Calculating tau hyperparam
-  a_tau <- df/2
+  df_tau <- 1
+  a_tau <- df_tau/2
 
   # Calculating lambda
-  qchi <- stats::qchisq(p = 1-sigquant,df = df,lower.tail = 1,ncp = 0)
-  lambda <- (nsigma*nsigma*qchi)/df
-  d_tau <- (lambda*df)/2
+  qchi <- stats::qchisq(p = 1-sigquant,df = df_tau,lower.tail = 1,ncp = 0)
+  lambda <- (nsigma*nsigma*qchi)/df_tau
+  d_tau <- (lambda*df_tau)/2
 
 
   # Simplying a_tau and d_tau priors
@@ -490,24 +501,24 @@ rspBART <- function(x_train,
 
   # Tau_beta_priors
   # Getting hyperparameters for \tau_beta_j
-  tau_beta_df <- 3
-  a_tau_beta_j <- tau_beta_df/2
+  # tau_beta_df <- 3
+  # a_tau_beta_j <- tau_beta_df/2
 
   # Setting the new value considering the paper
-  d_tau_beta_j <- 0.01
+  # d_tau_beta_j <- 0.01
 
-  par(mfrow=c(1,1))
+  # par(mfrow=c(1,1))
   # Visualising the prior
-  if(plot_preview){
-    rgamma(n = 1000,shape = a_tau_beta_j,rate = d_tau_beta_j) |> density() |> plot(main = "density prior \tau_beta_j")
-    mean(rgamma(n = 1000,shape = a_tau_beta_j,rate = d_tau_beta_j))
-  }
+  # if(plot_preview){
+  #   rgamma(n = 1000,shape = a_tau_beta_j,rate = d_tau_beta_j) |> density() |> plot(main = "density prior \tau_beta_j")
+  #   mean(rgamma(n = 1000,shape = a_tau_beta_j,rate = d_tau_beta_j))
+  # }
 
 
 
   # Simplifying for a_tau_beta_j too
-  a_tau_beta_j <- 100
-  d_tau_beta_j <- 10
+  # a_tau_beta_j <- 100
+  # d_tau_beta_j <- 10
 
   # Getting the inverse of the P matrix
   P_inv <- chol2inv(chol(P_train_main))
@@ -602,8 +613,8 @@ rspBART <- function(x_train,
                node_min_size = node_min_size,
                all_var = all_var,
                stump = stump,
-               a_tau_beta_j = a_tau_beta_j,
-               d_tau_beta_j = d_tau_beta_j,
+               # a_tau_beta_j = a_tau_beta_j,
+               # d_tau_beta_j = d_tau_beta_j,
                interaction_term = interaction_term,
                interaction_list = interaction_list,
                dummy_x = dummy_x,
@@ -635,7 +646,7 @@ rspBART <- function(x_train,
   if(plot_preview){
     par(mfrow = c(2,5))
     # Visualizing some basis functions
-    for(visu_basis in 1:10){
+    for(visu_basis in 1:(NCOL(length(dummy_x$continuousVars))+1)){
       plot(x  = 0, xlim = c(0,1), ylim = c(-1,1),
            type= 'n', ylab= paste0("B.",visu_basis), main = paste0("B(",visu_basis,")"))
       for(basis_col in 1:NCOL(B_train_obj[[visu_basis]])){
@@ -643,6 +654,18 @@ rspBART <- function(x_train,
                col = basis_col, pch = 20, xlab = paste0("x.",visu_basis))
       }
     }
+
+    # Visualizing some basis functions
+    for(visu_basis in 1:(NCOL(length(dummy_x$continuousVars))+1)){
+      plot(x  = 0, xlim = c(0,1), ylim = c(-1,1),
+           type= 'n', ylab= paste0("B.",visu_basis), main = paste0("B(",visu_basis,")"))
+      for(basis_col in 1:NCOL(B_train_original[[visu_basis]])){
+        points(x_train[,visu_basis], B_train_original[[visu_basis]][,basis_col],
+               col = basis_col, pch = 20, xlab = paste0("x.",visu_basis))
+      }
+    }
+
+
   }
   # Initialing for storing post samples
   post <- 0
@@ -806,7 +829,7 @@ rspBART <- function(x_train,
       if(main_effects_pred){
         for(ii in 1:length(main_effects_train_list)){
           main_effects_train_list[[ii]][i,] <- main_effects_train_list[[ii]][i,] + update_betas_aux$y_hat_train[,ii]
-          # main_effects_test_list[[ii]][i,] <- main_effects_test_list[[ii]][i,] + update_betas_aux$y_hat_test[,ii]
+          main_effects_test_list[[ii]][i,] <- main_effects_test_list[[ii]][i,] + update_betas_aux$y_hat_test[,ii]
         }
 
       }
@@ -907,7 +930,7 @@ rspBART <- function(x_train,
       if(main_effects_pred){
         for(ii in 1:length(main_effects_train_list)){
           main_effects_train_list_norm[[ii]][post_iter,] <- unnormalize_bart_me(z = main_effects_train_list[[ii]][post_iter,],a = min_y,b = max_y)
-          # main_effects_test_list_norm[[ii]][post_iter,] <- unnormalize_bart_me(z = main_effects_test_list[[ii]][post_iter,],a = min_y,b = max_y)
+          main_effects_test_list_norm[[ii]][post_iter,] <- unnormalize_bart_me(z = main_effects_test_list[[ii]][post_iter,],a = min_y,b = max_y)
         }
       }
     }
@@ -1132,8 +1155,8 @@ rspBART <- function(x_train,
                            tau_mu = tau_mu,
                            a_tau = a_tau,
                            d_tau = d_tau,
-                           a_tau_beta = a_tau_beta_j,
-                           d_tau_beta = d_tau_beta_j,
+                           # a_tau_beta = a_tau_beta_j,
+                           # d_tau_beta = d_tau_beta_j,
                            a_delta = a_delta,
                            d_delta = d_delta,
                            nu = df,

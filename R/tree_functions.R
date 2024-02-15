@@ -1430,8 +1430,8 @@ update_tau_betas_j <- function(forest,
                                               rate = 0.5*data$tau*tau_b_rate[j] + 0.5*data$nu*data$robust_delta[j])
 
             # Just checking any error with tau_beta sampler
-            if(tau_beta_vec_aux_proposal > 100){
-              tau_beta_vec_aux_proposal <- 100
+            if(tau_beta_vec_aux_proposal > 1000){
+              tau_beta_vec_aux_proposal <- 1000
               warning("Warning: modified value for tau_beta to avoid numerical issues")
             }
         }
@@ -1455,8 +1455,8 @@ update_tau_betas_j <- function(forest,
                                               rate = 0.5*data$tau*tau_b_rate[j] + 0.5*data$nu*data$robust_delta[j])
 
           # Just checking any error with tau_beta sampler
-          if(tau_beta_vec_aux_proposal > 100){
-            tau_beta_vec_aux_proposal <- 100
+          if(tau_beta_vec_aux_proposal > 1000){
+            tau_beta_vec_aux_proposal <- 1000
             warning("Warning: modified value for tau_beta to avoid numerical issues")
           }
         }
